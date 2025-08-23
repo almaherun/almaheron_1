@@ -76,7 +76,10 @@ export function useVercelWebRTC({ userId, userName, autoConnect = true }: UseVer
 
       // الاتصال التلقائي
       if (autoConnect) {
+        console.log('🔄 Auto-connecting to server...');
         connectToServer();
+      } else {
+        console.log('⏸️ Auto-connect disabled');
       }
     }
 

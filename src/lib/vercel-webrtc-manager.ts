@@ -25,12 +25,14 @@ export class VercelWebRTCManager {
   public onMessage?: (message: any) => void;
 
   constructor(userId: string, userName: string) {
+    console.log('🏗️ VercelWebRTCManager constructor called:', { userId, userName });
     this.userId = userId;
     this.userName = userName;
   }
 
   // بدء الاتصال بخادم الإشارات
   async connectToSignalingServer(): Promise<boolean> {
+    console.log('🔌 VercelWebRTCManager.connectToSignalingServer called');
     try {
       // تسجيل المستخدم
       const registerResponse = await fetch('/api/signaling', {
