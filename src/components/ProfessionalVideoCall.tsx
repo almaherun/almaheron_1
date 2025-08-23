@@ -56,6 +56,20 @@ export default function ProfessionalVideoCall({
     autoConnect: true
   });
 
+  // تشخيص مفصل
+  useEffect(() => {
+    console.log('🔍 ProfessionalVideoCall Debug:', {
+      userId,
+      userName,
+      userType,
+      targetTeacherId,
+      targetTeacherName,
+      isConnected,
+      connectionState,
+      error: error?.message
+    });
+  }, [userId, userName, userType, targetTeacherId, targetTeacherName, isConnected, connectionState, error]);
+
   // تحميل CSS الإسلامي - تم إصلاح المسار
   useEffect(() => {
     const link = document.createElement('link');

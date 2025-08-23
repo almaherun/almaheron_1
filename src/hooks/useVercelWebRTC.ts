@@ -33,8 +33,11 @@ export function useVercelWebRTC({ userId, userName, autoConnect = true }: UseVer
 
   // إنشاء مدير WebRTC
   useEffect(() => {
+    console.log('🚀 useVercelWebRTC initializing:', { userId, userName, autoConnect });
+
     if (userId && userName) {
       managerRef.current = new VercelWebRTCManager(userId, userName);
+      console.log('✅ WebRTC Manager created for:', userId);
       
       // إعداد معالجات الأحداث
       managerRef.current.onLocalStream = (stream) => {
@@ -99,16 +102,22 @@ export function useVercelWebRTC({ userId, userName, autoConnect = true }: UseVer
 
   // الاتصال بالخادم
   const connectToServer = useCallback(async () => {
-    if (!managerRef.current) return false;
+    console.log('🔌 Attempting to connect to server...');
+    if (!managerRef.current) {
+      console.error('❌ No WebRTC manager available');
+      return false;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
       const connected = await managerRef.current.connectToSignalingServer();
+      console.log('🔌 Connection result:', connected);
       setIsConnected(connected);
       return connected;
     } catch (error) {
+      console.error('❌ Connection failed:', error);
       setError(error as Error);
       return false;
     } finally {
@@ -118,16 +127,24 @@ export function useVercelWebRTC({ userId, userName, autoConnect = true }: UseVer
 
   // بدء مكالمة
   const startCall = useCallback(async (targetUserId: string) => {
+    console.log('📞 Starting call to:', targetUserId);
+    console.log('📞 Connection status:', { isConnected, manager: !!managerRef.current });
+
     if (!managerRef.current || !isConnected) {
-      throw new Error('غير متصل بالخادم');
+      const errorMsg = !managerRef.current ? 'لا يوجد مدير WebRTC' : 'غير متصل بالخادم';
+      console.error('❌ Cannot start call:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     setIsLoading(true);
     setError(null);
 
     try {
+      console.log('📞 Calling manager.startCall...');
       await managerRef.current.startCall(targetUserId);
+      console.log('✅ Call started successfully');
     } catch (error) {
+      console.error('❌ Call failed:', error);
       setError(error as Error);
       throw error;
     } finally {
