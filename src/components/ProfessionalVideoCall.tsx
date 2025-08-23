@@ -66,8 +66,18 @@ export default function ProfessionalVideoCall({
       targetTeacherName,
       isConnected,
       connectionState,
-      error: error?.message
+      error: error?.message,
+      hasUserId: !!userId,
+      hasUserName: !!userName
     });
+
+    // تشخيص إضافي
+    if (!userId) {
+      console.error('❌ userId is empty!');
+    }
+    if (!userName) {
+      console.error('❌ userName is empty!');
+    }
   }, [userId, userName, userType, targetTeacherId, targetTeacherName, isConnected, connectionState, error]);
 
   // تحميل CSS الإسلامي - تم إصلاح المسار
