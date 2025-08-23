@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useWebRTC } from '@/hooks/useWebRTC';
+import { useVercelWebRTC } from '@/hooks/useVercelWebRTC';
 import { useAuth } from '@/contexts/AuthContext';
 import IncomingCallScreen from './IncomingCallScreen';
 import ActiveCallScreen from './ActiveCallScreen';
@@ -32,19 +32,29 @@ export default function ProfessionalVideoCall({
   
   const {
     isConnected,
+    isInCall,
     connectionState,
+    localStream,
+    remoteStream,
     isVideoEnabled,
     isAudioEnabled,
-    isScreenSharing,
+    error,
+    isLoading,
+    incomingCall,
     localVideoRef,
     remoteVideoRef,
-    participants,
-    error,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
     toggleVideo,
     toggleAudio,
-    endCall,
     getConnectionQuality
-  } = useWebRTC();
+  } = useVercelWebRTC({
+    userId: userId,
+    userName: userName,
+    autoConnect: true
+  });
 
   // تحميل CSS الإسلامي - تم إصلاح المسار
   useEffect(() => {
@@ -60,21 +70,39 @@ export default function ProfessionalVideoCall({
     };
   }, []);
 
+  // معالجة المكالمة الواردة
+  if (incomingCall) {
+    return (
+      <IncomingCallScreen
+        callerName={incomingCall.fromUserId || 'مستخدم'}
+        callerImage=""
+        callerTitle={userType === 'student' ? 'معلم تحفيظ القرآن الكريم' : 'طالب'}
+        isVisible={true}
+        onAcceptAudio={acceptCall}
+        onAcceptVideo={acceptCall}
+        onReject={rejectCall}
+      />
+    );
+  }
+
   // عرض شاشة المكالمة النشطة
-  if (isConnected && participants.length > 0) {
+  if (isInCall && remoteStream) {
     return (
       <ActiveCallScreen
-        recipientName={targetTeacherName || 'معلم'}
+        recipientName={targetTeacherName || 'مستخدم'}
         recipientAvatar={targetTeacherImage}
         duration="00:00"
         isVideoEnabled={isVideoEnabled}
         isAudioEnabled={isAudioEnabled}
-        isScreenSharing={isScreenSharing}
-        connectionQuality={connectionState === 'connected' ? 'excellent' : 'good'}
+        isScreenSharing={false}
+        connectionQuality={(() => {
+          const quality = getConnectionQuality();
+          return quality === 'disconnected' ? 'poor' : quality;
+        })()}
         onToggleVideo={toggleVideo}
         onToggleAudio={toggleAudio}
         onToggleScreenShare={() => {
-          console.log('Toggle screen share...');
+          console.log('Screen share not implemented yet');
         }}
         onEndCall={endCall}
         onOpenChat={() => {
@@ -143,22 +171,28 @@ export default function ProfessionalVideoCall({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => console.log('Start video call')}
+          onClick={() => targetTeacherId && startCall(targetTeacherId)}
+          disabled={isLoading || !isConnected}
           className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
         >
           <Video className="w-6 h-6" />
-          <span className="font-semibold text-lg">📹 مكالمة فيديو</span>
+          <span className="font-semibold text-lg">
+            {isLoading ? '⏳ جاري الاتصال...' : '📹 مكالمة فيديو'}
+          </span>
         </motion.button>
 
         {/* زر مكالمة صوتية */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => console.log('Start audio call')}
+          onClick={() => targetTeacherId && startCall(targetTeacherId)}
+          disabled={isLoading || !isConnected}
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
         >
           <Phone className="w-5 h-5" />
-          <span className="font-semibold">📞 مكالمة صوتية</span>
+          <span className="font-semibold">
+            {isLoading ? '⏳ جاري الاتصال...' : '📞 مكالمة صوتية'}
+          </span>
         </motion.button>
 
         {/* معلومات المعلم */}

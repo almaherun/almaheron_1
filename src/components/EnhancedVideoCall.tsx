@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useWebRTC } from '@/hooks/useWebRTC';
+import { useVercelWebRTC } from '@/hooks/useVercelWebRTC';
 import { useAuth } from '@/contexts/AuthContext';
 import ActiveCallScreen from './ActiveCallScreen';
 import IncomingCallScreen from './IncomingCallScreen';
@@ -34,28 +34,29 @@ export default function EnhancedVideoCall({
     remoteStream,
     isVideoEnabled,
     isAudioEnabled,
-    isScreenSharing,
-    participants,
     error,
     isLoading,
+    incomingCall,
     localVideoRef,
     remoteVideoRef,
-    registerUser,
-    joinRoom,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall: endCallManager,
     toggleVideo,
     toggleAudio,
-    toggleScreenShare,
-    endCall,
     getConnectionQuality
-  } = useWebRTC({
-    signalingServerUrl: process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002'
+  } = useVercelWebRTC({
+    userId: user?.uid || '',
+    userName: user?.displayName || 'مستخدم',
+    autoConnect: true
   });
 
   // حالة المكالمة
   const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'active' | 'ended'>('idle');
   const [callDuration, setCallDuration] = useState(0);
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'disconnected'>('good');
-  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [incomingCallLocal, setIncomingCallLocal] = useState<any>(null);
 
   // دالة تنسيق مدة المكالمة
   const formatDuration = (seconds: number): string => {
@@ -83,12 +84,13 @@ export default function EnhancedVideoCall({
     };
   }, []);
 
-  // تسجيل المستخدم عند التحميل
+  // معالجة المكالمات الواردة
   useEffect(() => {
-    if (user?.uid && user?.displayName) {
-      registerUser(user.uid, user.displayName, user.photoURL || '');
+    if (incomingCall) {
+      setIncomingCallLocal(incomingCall);
+      setCallState('incoming');
     }
-  }, [user, registerUser]);
+  }, [incomingCall]);
 
   // بدء المكالمة تلقائياً إذا كان مطلوباً
   useEffect(() => {
@@ -151,8 +153,7 @@ export default function EnhancedVideoCall({
     setCallDuration(0);
 
     try {
-      const callRoomId = roomId || `call_${user.uid}_${targetUserId}_${Date.now()}`;
-      await joinRoom(callRoomId, true); // true = المبادر
+      await startCall(targetUserId);
     } catch (error) {
       console.error('خطأ في بدء المكالمة:', error);
       setCallState('ended');
@@ -161,14 +162,14 @@ export default function EnhancedVideoCall({
 
   // قبول المكالمة
   const handleAcceptCall = async () => {
-    if (!incomingCall || !user?.uid) return;
+    if (!incomingCallLocal || !user?.uid) return;
 
     setCallState('calling');
     setCallDuration(0);
 
     try {
-      await joinRoom(incomingCall.roomId, false); // false = ليس المبادر
-      setIncomingCall(null);
+      await acceptCall();
+      setIncomingCallLocal(null);
     } catch (error) {
       console.error('خطأ في قبول المكالمة:', error);
       setCallState('ended');
@@ -177,17 +178,17 @@ export default function EnhancedVideoCall({
 
   // رفض المكالمة
   const handleRejectCall = () => {
-    setIncomingCall(null);
+    rejectCall();
     setCallState('idle');
   };
 
   // إنهاء المكالمة
   const handleEndCall = async () => {
     try {
-      await endCall();
+      await endCallManager();
       setCallState('ended');
       setCallDuration(0);
-      
+
       // العودة للحالة الأولية بعد ثانيتين
       setTimeout(() => {
         setCallState('idle');
@@ -214,11 +215,11 @@ export default function EnhancedVideoCall({
         duration={formatDuration(callDuration)}
         isVideoEnabled={isVideoEnabled}
         isAudioEnabled={isAudioEnabled}
-        isScreenSharing={isScreenSharing}
+        isScreenSharing={false}
         connectionQuality={connectionQuality === 'disconnected' ? 'poor' : connectionQuality}
         onToggleVideo={toggleVideo}
         onToggleAudio={toggleAudio}
-        onToggleScreenShare={toggleScreenShare}
+        onToggleScreenShare={() => console.log('Screen share not implemented')}
         onEndCall={handleEndCall}
         onOpenChat={() => {
           console.log('Opening chat...');
@@ -230,11 +231,11 @@ export default function EnhancedVideoCall({
   }
 
   // عرض شاشة المكالمة الواردة
-  if (callState === 'incoming' && incomingCall) {
+  if (callState === 'incoming' && incomingCallLocal) {
     return (
       <IncomingCallScreen
-        callerName={incomingCall.callerName}
-        callerImage={incomingCall.callerImage}
+        callerName={incomingCallLocal.fromUserId || 'مستخدم'}
+        callerImage=""
         callerTitle="معلم تحفيظ القرآن الكريم"
         onAcceptAudio={handleAcceptCall}
         onAcceptVideo={handleAcceptCall}

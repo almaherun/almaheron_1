@@ -1,4 +1,25 @@
-# سجل التغييرات - تطبيق أكاديمية المحدون للقرآن
+# سجل التغييرات - تطبيق أكاديمية المحرون للقرآن
+
+## 🚀 الإصدار 3.0.0 - Vercel Functions Integration
+**📅 التاريخ:** 23 أغسطس 2025
+
+### 🎯 التحديث الكبير: تحويل كامل لـ Vercel Functions
+
+#### ✨ الميزات الجديدة:
+- **🔥 Vercel Functions**: خادم إشارات مدمج بدلاً من خادم منفصل
+- **⚡ Server-Sent Events**: اتصال فوري محسن
+- **🌐 Edge Network**: سرعة فائقة عالمياً
+- **💰 مجاني 100%**: لا تكاليف إضافية أبداً
+- **🛡️ استقرار كامل**: لا ينام أو يتوقف
+
+#### 📁 الملفات الجديدة:
+- `src/app/api/signaling/route.ts` - خادم الإشارات المدمج
+- `src/app/api/websocket/route.ts` - الاتصال الفوري
+- `src/lib/vercel-webrtc-manager.ts` - مدير WebRTC محسن
+- `src/hooks/useVercelWebRTC.ts` - Hook مخصص جديد
+- `src/app/test-call/page.tsx` - صفحة اختبار شاملة
+
+---
 
 ## 📅 التاريخ: 2025-08-09
 
