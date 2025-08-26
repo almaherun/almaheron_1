@@ -38,7 +38,18 @@ export default function JitsiVideoCall({
   callSubject = "تحفيظ القرآن الكريم"
 }: JitsiVideoCallProps) {
   const { user } = useAuth();
-  
+
+  // تسجيل تهيئة المكون
+  console.log('🎬 JitsiVideoCall: تهيئة المكون', {
+    targetUserId,
+    targetUserName,
+    targetUserAvatar,
+    autoStart,
+    callSubject,
+    currentUser: user?.uid,
+    timestamp: new Date().toISOString()
+  });
+
   // حالات المكالمة
   const [callState, setCallState] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle');
   const [incomingCall, setIncomingCall] = useState<CallRequest | null>(null);
@@ -71,14 +82,23 @@ export default function JitsiVideoCall({
     autoConnect: false
   });
 
-  // إعداد مدير الإشعارات
+  // إعداد مدير الإشعارات مع تسجيل مفصل
   useEffect(() => {
+    console.log('🔧 JitsiVideoCall: إعداد مدير الإشعارات', {
+      hasUser: !!user,
+      userId: user?.uid,
+      displayName: user?.displayName
+    });
+
     if (user?.uid) {
+      console.log('📱 JitsiVideoCall: إنشاء CallNotificationManager');
+
       const manager = new CallNotificationManager(
         user.uid,
         user.displayName || 'مستخدم'
       );
 
+      console.log('📱 JitsiVideoCall: تعيين callbacks للمدير');
       manager.setCallbacks({
         onIncomingCall: (callRequest) => {
           console.log('📞 مكالمة واردة:', callRequest);
@@ -109,12 +129,18 @@ export default function JitsiVideoCall({
         }
       });
 
+      console.log('👂 JitsiVideoCall: بدء الاستماع للإشعارات');
       manager.startListening();
+
+      console.log('💾 JitsiVideoCall: حفظ مدير الإشعارات في الحالة');
       setNotificationManager(manager);
 
       return () => {
+        console.log('🧹 JitsiVideoCall: تنظيف مدير الإشعارات');
         manager.dispose();
       };
+    } else {
+      console.warn('⚠️ JitsiVideoCall: لا يوجد مستخدم مسجل دخول - لن يتم إعداد مدير الإشعارات');
     }
   }, [user?.uid, startCall]);
 
@@ -134,35 +160,105 @@ export default function JitsiVideoCall({
     };
   }, [isInCall]);
 
-  // بدء مكالمة جديدة
+  // بدء مكالمة جديدة مع تسجيل مفصل
   const handleStartCall = async () => {
-    if (!targetUserId || !targetUserName || !notificationManager) return;
+    console.log('🚀 JitsiVideoCall: تم الضغط على زر بدء المكالمة');
+    console.log('📋 JitsiVideoCall: فحص المتطلبات', {
+      targetUserId,
+      targetUserName,
+      hasNotificationManager: !!notificationManager,
+      callState,
+      user: user?.uid
+    });
+
+    if (!targetUserId) {
+      console.error('❌ JitsiVideoCall: targetUserId مفقود');
+      alert('خطأ: معرف المستخدم المستهدف مفقود');
+      return;
+    }
+
+    if (!targetUserName) {
+      console.error('❌ JitsiVideoCall: targetUserName مفقود');
+      alert('خطأ: اسم المستخدم المستهدف مفقود');
+      return;
+    }
+
+    if (!notificationManager) {
+      console.error('❌ JitsiVideoCall: notificationManager غير متاح');
+      alert('خطأ: مدير الإشعارات غير متاح. تأكد من تسجيل الدخول.');
+      return;
+    }
+
+    if (!user) {
+      console.error('❌ JitsiVideoCall: المستخدم غير مسجل دخول');
+      alert('خطأ: يجب تسجيل الدخول أولاً');
+      return;
+    }
 
     try {
+      console.log('📞 JitsiVideoCall: بدء إرسال طلب المكالمة...');
       setCallState('calling');
+
       const callId = await notificationManager.sendCallRequest(
         targetUserId,
         targetUserName,
         'video',
         callSubject
       );
+
+      console.log('✅ JitsiVideoCall: تم إرسال طلب المكالمة بنجاح', { callId });
       setCurrentCallId(callId);
-    } catch (error) {
-      console.error('❌ خطأ في بدء المكالمة:', error);
+
+    } catch (error: any) {
+      console.error('❌ JitsiVideoCall: خطأ في بدء المكالمة', {
+        error: error.message,
+        stack: error.stack,
+        targetUserId,
+        targetUserName
+      });
+
       setCallState('idle');
+      alert(`خطأ في بدء المكالمة: ${error.message}`);
     }
   };
 
-  // قبول مكالمة واردة
+  // قبول مكالمة واردة مع تسجيل مفصل
   const handleAcceptCall = async () => {
-    if (!incomingCall || !notificationManager) return;
+    console.log('✅ JitsiVideoCall: تم الضغط على زر قبول المكالمة');
+    console.log('📋 JitsiVideoCall: فحص المتطلبات للقبول', {
+      hasIncomingCall: !!incomingCall,
+      incomingCallId: incomingCall?.id,
+      hasNotificationManager: !!notificationManager,
+      callState
+    });
+
+    if (!incomingCall) {
+      console.error('❌ JitsiVideoCall: لا توجد مكالمة واردة للقبول');
+      alert('خطأ: لا توجد مكالمة واردة للقبول');
+      return;
+    }
+
+    if (!notificationManager) {
+      console.error('❌ JitsiVideoCall: notificationManager غير متاح للقبول');
+      alert('خطأ: مدير الإشعارات غير متاح');
+      return;
+    }
 
     try {
+      console.log('📞 JitsiVideoCall: قبول المكالمة...', { callId: incomingCall.id });
+
       await notificationManager.acceptCall(incomingCall.id!);
       setCurrentCallId(incomingCall.id!);
       setIncomingCall(null);
-    } catch (error) {
-      console.error('❌ خطأ في قبول المكالمة:', error);
+
+      console.log('✅ JitsiVideoCall: تم قبول المكالمة بنجاح');
+
+    } catch (error: any) {
+      console.error('❌ JitsiVideoCall: خطأ في قبول المكالمة', {
+        error: error.message,
+        callId: incomingCall.id
+      });
+      alert(`خطأ في قبول المكالمة: ${error.message}`);
     }
   };
 
@@ -305,6 +401,17 @@ export default function JitsiVideoCall({
     );
   }
 
+  // تسجيل حالة المكون عند الـ render
+  console.log('🎨 JitsiVideoCall: render', {
+    callState,
+    isInCall,
+    isConnecting,
+    hasTargetUserId: !!targetUserId,
+    hasNotificationManager: !!notificationManager,
+    hasUser: !!user,
+    timestamp: new Date().toISOString()
+  });
+
   return (
     <div className="relative w-full h-full min-h-[600px] bg-gray-900 rounded-lg overflow-hidden">
       {/* حاوي Jitsi */}
@@ -322,16 +429,24 @@ export default function JitsiVideoCall({
             </h2>
             <p className="text-white/80 mb-6">{callSubject}</p>
             
-            {targetUserId && (
+            {targetUserId ? (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleStartCall}
+                onClick={() => {
+                  console.log('🖱️ JitsiVideoCall: تم الضغط على زر بدء المكالمة (onClick)');
+                  handleStartCall();
+                }}
                 className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 mx-auto"
               >
                 <Phone className="w-5 h-5" />
                 بدء المكالمة
               </motion.button>
+            ) : (
+              <div className="text-center">
+                <p className="text-red-400 mb-4">⚠️ معرف المستخدم المستهدف مفقود</p>
+                <p className="text-white/60 text-sm">targetUserId: {targetUserId || 'غير محدد'}</p>
+              </div>
             )}
           </div>
         </div>
