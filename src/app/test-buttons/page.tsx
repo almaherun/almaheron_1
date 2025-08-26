@@ -17,6 +17,10 @@ export default function TestButtonsPage() {
           <p className="text-gray-600">
             اختبار شامل للأزرار والوظائف الأساسية قبل المكالمات
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            <span className="text-sm font-medium">خدمة مجانية 100% - بدون فيزا</span>
+          </div>
         </div>
 
         {!user ? (
@@ -79,11 +83,11 @@ export default function TestButtonsPage() {
             >
               🎥 اختبار Jitsi
             </a>
-            <a 
-              href="/debug" 
-              className="bg-orange-600 text-white px-3 py-2 rounded text-center hover:bg-orange-700 transition-colors text-sm"
+            <a
+              href="/free-servers"
+              className="bg-green-600 text-white px-3 py-2 rounded text-center hover:bg-green-700 transition-colors text-sm"
             >
-              🐛 تشخيص عام
+              🆓 خوادم مجانية
             </a>
           </div>
         </div>

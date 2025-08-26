@@ -28,6 +28,7 @@ interface JitsiVideoCallProps {
   targetUserAvatar?: string;
   autoStart?: boolean;
   callSubject?: string;
+  preferredServer?: string; // خادم مفضل للمكالمة
 }
 
 export default function JitsiVideoCall({
@@ -35,7 +36,8 @@ export default function JitsiVideoCall({
   targetUserName,
   targetUserAvatar,
   autoStart = false,
-  callSubject = "تحفيظ القرآن الكريم"
+  callSubject = "تحفيظ القرآن الكريم",
+  preferredServer = "meet.jit.si"
 }: JitsiVideoCallProps) {
   const { user } = useAuth();
 
@@ -46,6 +48,7 @@ export default function JitsiVideoCall({
     targetUserAvatar,
     autoStart,
     callSubject,
+    preferredServer,
     currentUser: user?.uid,
     timestamp: new Date().toISOString()
   });
@@ -79,7 +82,8 @@ export default function JitsiVideoCall({
     participantCount
   } = useJitsiCall({
     displayName: user?.displayName || 'مستخدم',
-    autoConnect: false
+    autoConnect: false,
+    preferredServer // تمرير الخادم المفضل
   });
 
   // إعداد مدير الإشعارات مع تسجيل مفصل

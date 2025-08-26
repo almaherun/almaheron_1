@@ -47,10 +47,48 @@ class DetailedLogger {
 
 const logger = DetailedLogger.getInstance();
 
+// قائمة الخوادم المجانية المتاحة (بدون فيزا أو تسجيل)
+const FREE_JITSI_SERVERS = [
+  'meet.jit.si',        // الخادم الرسمي المجاني
+  '8x8.vc',             // خادم 8x8 المجاني
+  'jitsi.riot.im',      // خادم مجتمعي
+  'meet.ffmuc.net',     // خادم ألماني مجاني
+  'jitsi.member.fsf.org' // خادم مؤسسة البرمجيات الحرة
+];
+
+// دالة لاختيار أفضل خادم متاح
+const selectBestServer = async (): Promise<string> => {
+  logger.log('INFO', 'اختيار أفضل خادم مجاني متاح');
+
+  // جرب الخوادم واحداً تلو الآخر
+  for (const server of FREE_JITSI_SERVERS) {
+    try {
+      logger.log('DEBUG', `اختبار الخادم: ${server}`);
+
+      // اختبار بسيط للاتصال
+      const response = await fetch(`https://${server}`, {
+        method: 'HEAD',
+        mode: 'no-cors' // تجنب مشاكل CORS
+      });
+
+      logger.log('INFO', `✅ الخادم ${server} متاح`);
+      return server;
+
+    } catch (error) {
+      logger.log('WARN', `❌ الخادم ${server} غير متاح`, error);
+      continue;
+    }
+  }
+
+  // إذا فشلت جميع الخوادم، استخدم الافتراضي
+  logger.log('WARN', 'جميع الخوادم غير متاحة، استخدام الخادم الافتراضي');
+  return FREE_JITSI_SERVERS[0];
+};
+
 // مدير Jitsi Meet للمكالمات المجانية مع تسجيل مفصل
 export class JitsiManager {
   private api: any = null;
-  private domain = 'meet.jit.si';
+  private domain: string;
   private roomName: string = '';
   private displayName: string = '';
   private isVideoMuted = false;
@@ -64,12 +102,27 @@ export class JitsiManager {
   public onVideoConferenceLeft?: () => void;
   public onError?: (error: any) => void;
 
-  constructor(displayName: string) {
-    logger.log('INFO', 'JitsiManager Constructor', { displayName });
+  constructor(displayName: string, preferredServer?: string) {
+    logger.log('INFO', 'JitsiManager Constructor', { displayName, preferredServer });
     this.displayName = displayName;
+    this.domain = preferredServer || FREE_JITSI_SERVERS[0]; // استخدام خادم مجاني
 
     // فحص البيئة
     this.checkEnvironment();
+  }
+
+  // اختيار أفضل خادم مجاني متاح
+  async selectOptimalServer(): Promise<void> {
+    logger.log('INFO', 'بحث عن أفضل خادم مجاني متاح...');
+
+    try {
+      const bestServer = await selectBestServer();
+      this.domain = bestServer;
+      logger.log('INFO', `تم اختيار الخادم: ${bestServer}`);
+    } catch (error) {
+      logger.log('ERROR', 'فشل في اختيار الخادم، استخدام الافتراضي', error);
+      this.domain = FREE_JITSI_SERVERS[0];
+    }
   }
 
   // فحص البيئة والمتطلبات
@@ -227,6 +280,9 @@ export class JitsiManager {
 
       this.roomName = roomName.trim();
       logger.log('DEBUG', 'تم تعيين اسم الغرفة', { roomName: this.roomName });
+
+      // اختيار أفضل خادم مجاني متاح
+      await this.selectOptimalServer();
 
       // فحص الأذونات قبل البدء
       await this.checkPermissions();

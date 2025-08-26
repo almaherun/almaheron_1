@@ -6,6 +6,7 @@ import { JitsiManager, JitsiDebugUtils } from '@/lib/jitsi-manager';
 interface UseJitsiCallProps {
   displayName: string;
   autoConnect?: boolean;
+  preferredServer?: string; // خادم مفضل للمكالمة
 }
 
 interface CallParticipant {
@@ -14,7 +15,11 @@ interface CallParticipant {
   isLocal?: boolean;
 }
 
-export function useJitsiCall({ displayName, autoConnect = false }: UseJitsiCallProps) {
+export function useJitsiCall({
+  displayName,
+  autoConnect = false,
+  preferredServer = 'meet.jit.si'
+}: UseJitsiCallOptions) {
   // الحالات
   const [isInCall, setIsInCall] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -28,10 +33,11 @@ export function useJitsiCall({ displayName, autoConnect = false }: UseJitsiCallP
   const jitsiManagerRef = useRef<JitsiManager | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // إنشاء مدير Jitsi
+  // إنشاء مدير Jitsi مع الخادم المفضل
   useEffect(() => {
     if (displayName) {
-      jitsiManagerRef.current = new JitsiManager(displayName);
+      console.log('🔧 useJitsiCall: إنشاء JitsiManager', { displayName, preferredServer });
+      jitsiManagerRef.current = new JitsiManager(displayName, preferredServer);
       
       // إعداد معالجات الأحداث
       const manager = jitsiManagerRef.current;
