@@ -17,14 +17,7 @@
       "dest": "/$1"
     }
   ],
-  "functions": {
-    "src/app/api/signaling/route.ts": {
-      "maxDuration": 30
-    },
-    "src/app/api/websocket/route.ts": {
-      "maxDuration": 300
-    }
-  },
+
   "headers": [
     {
       "source": "/api/(.*)",

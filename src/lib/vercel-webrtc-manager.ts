@@ -1,21 +1,4 @@
-// مدير WebRTC محسن للعمل مع Vercel Functions
-export class VercelWebRTCManager {
-  private peerConnection: RTCPeerConnection | null = null;
-  private localStream: MediaStream | null = null;
-  private remoteStream: MediaStream | null = null;
-  private eventSource: EventSource | null = null;
-  private isInitiator = false;
-  private roomId: string | null = null;
-  private userId: string;
-  private userName: string;
-  private targetUserId: string | null = null;
-
-  // إعدادات ICE servers
-  private iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
-  ];
+// ملف محذوف - سيتم استبداله بنظام Jitsi Meet الجديد
 
   // معالجات الأحداث
   public onLocalStream?: (stream: MediaStream) => void;

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>إنشاء نغمة رنين</title>
+</head>
+<body>
+    <h1>إنشاء نغمة رنين إسلامية</h1>
+    <button onclick="generateRingtone()">إنشاء وتحميل نغمة الرنين</button>
+    
+    <script>
+        function generateRingtone() {
+            // إنشاء AudioContext
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const sampleRate = audioContext.sampleRate;
+            const duration = 3; // 3 ثوان
+            const length = sampleRate * duration;
+            
+            // إنشاء buffer
+            const buffer = audioContext.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // إنشاء نغمة إسلامية هادئة
+            for (let i = 0; i < length; i++) {
+                const time = i / sampleRate;
+                
+                // نغمات متناغمة (مقام حجاز)
+                const freq1 = 440; // لا
+                const freq2 = 493.88; // سي
+                const freq3 = 523.25; // دو
+                
+                // موجات صوتية متداخلة
+                const wave1 = Math.sin(2 * Math.PI * freq1 * time) * 0.3;
+                const wave2 = Math.sin(2 * Math.PI * freq2 * time) * 0.2;
+                const wave3 = Math.sin(2 * Math.PI * freq3 * time) * 0.1;
+                
+                // تأثير التلاشي
+                const fadeIn = Math.min(time * 4, 1);
+                const fadeOut = Math.min((duration - time) * 4, 1);
+                const envelope = fadeIn * fadeOut;
+                
+                data[i] = (wave1 + wave2 + wave3) * envelope * 0.5;
+            }
+            
+            // تحويل إلى WAV وتحميل
+            const wav = audioBufferToWav(buffer);
+            const blob = new Blob([wav], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ringtone.wav';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+        
+        // تحويل AudioBuffer إلى WAV
+        function audioBufferToWav(buffer) {
+            const length = buffer.length;
+            const arrayBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(arrayBuffer);
+            
+            // WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, buffer.sampleRate, true);
+            view.setUint32(28, buffer.sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+            
+            // PCM data
+            const data = buffer.getChannelData(0);
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                const sample = Math.max(-1, Math.min(1, data[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+            
+            return arrayBuffer;
+        }
+    </script>
+</body>
+</html>

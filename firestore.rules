@@ -181,10 +181,36 @@ service cloud.firestore {
         || (isAuthenticated() && resource.data.senderId == request.auth.uid);
     }
 
-    // قواعد طلبات المكالمات Agora.io
+    // قواعد طلبات المكالمات Agora.io (قديم)
     match /agora_call_requests/{requestId} {
       // السماح الكامل للمستخدمين المصادقين (مؤقتاً لحل مشكلة التحميل)
       allow read, write, create, update, delete: if isAuthenticated();
+    }
+
+    // قواعد طلبات المكالمات الجديدة (Jitsi Meet)
+    match /call_requests/{requestId} {
+      // القراءة: المرسل أو المستقبل
+      allow read: if isAuthenticated()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+
+      // الإنشاء: المستخدمين المصادقين
+      allow create: if isAuthenticated()
+        && resource.data.fromUserId == request.auth.uid
+        && resource.data.createdAt == request.time
+        && resource.data.status == 'pending';
+
+      // التحديث: المرسل أو المستقبل (لتحديث الحالة)
+      allow update: if isAuthenticated()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid)
+        && request.resource.data.updatedAt == request.time;
+
+      // الحذف: المرسل أو المستقبل أو الأدمن
+      allow delete: if isAdmin()
+        || (isAuthenticated() &&
+            (resource.data.fromUserId == request.auth.uid
+             || resource.data.toUserId == request.auth.uid));
     }
     
     // منع الوصول لأي مجموعات أخرى

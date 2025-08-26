@@ -19,7 +19,7 @@
     "validate": "npm run type-check && npm run lint && npm run test",
     "vercel:dev": "vercel dev",
     "vercel:deploy": "vercel --prod",
-    "test:api": "curl http://localhost:3000/api/signaling?action=status"
+    "test:api": "echo 'API tests will be updated for new system'"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -83,7 +83,8 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5",
     "uuid": "^11.1.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "lib-jitsi-meet": "^1.5.0"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.12.0",
