@@ -5,17 +5,21 @@ import { useJitsiCall } from '@/hooks/useJitsiCall';
 import { CallNotificationManager, CallRequest } from '@/lib/call-notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Phone, 
-  PhoneOff, 
-  Mic, 
-  MicOff, 
-  Video, 
+import { JitsiDebugUtils } from '@/lib/jitsi-manager';
+import {
+  Phone,
+  PhoneOff,
+  Mic,
+  MicOff,
+  Video,
   VideoOff,
   PhoneCall,
   UserCheck,
   Clock,
-  X
+  X,
+  Bug,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 
 interface JitsiVideoCallProps {
@@ -41,6 +45,11 @@ export default function JitsiVideoCall({
   const [currentCallId, setCurrentCallId] = useState<string>('');
   const [callDuration, setCallDuration] = useState(0);
   const [notificationManager, setNotificationManager] = useState<CallNotificationManager | null>(null);
+
+  // حالات التشخيص
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [debugLogs, setDebugLogs] = useState<any[]>([]);
 
   // Jitsi Hook
   const {
@@ -196,6 +205,39 @@ export default function JitsiVideoCall({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // دوال التشخيص
+  const handleShowDebugPanel = () => {
+    setShowDebugPanel(!showDebugPanel);
+    if (!showDebugPanel) {
+      // تحديث السجلات عند فتح اللوحة
+      const logs = JitsiDebugUtils?.getDebugLogs?.() || [];
+      setDebugLogs(logs);
+    }
+  };
+
+  const handleCheckSystemStatus = async () => {
+    try {
+      const status = await JitsiDebugUtils.checkSystemStatus();
+      setSystemStatus(status);
+    } catch (error) {
+      console.error('خطأ في فحص حالة النظام:', error);
+    }
+  };
+
+  const handleExportLogs = () => {
+    JitsiDebugUtils.exportLogs();
+  };
+
+  const handleClearLogs = () => {
+    JitsiDebugUtils.clearLogs();
+    setDebugLogs([]);
+  };
+
+  const handleRefreshLogs = () => {
+    const logs = JitsiDebugUtils?.getDebugLogs?.() || [];
+    setDebugLogs(logs);
   };
 
   // واجهة المكالمة الواردة
@@ -362,6 +404,117 @@ export default function JitsiVideoCall({
           {error}
         </div>
       )}
+
+      {/* زر التشخيص */}
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleShowDebugPanel}
+        className="absolute top-4 right-4 w-10 h-10 bg-gray-800/80 hover:bg-gray-700/80 rounded-full flex items-center justify-center text-white"
+        title="لوحة التشخيص"
+      >
+        <Bug className="w-5 h-5" />
+      </motion.button>
+
+      {/* لوحة التشخيص */}
+      <AnimatePresence>
+        {showDebugPanel && (
+          <motion.div
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            className="absolute top-0 right-0 w-80 h-full bg-gray-900/95 backdrop-blur-sm text-white p-4 overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">🔍 لوحة التشخيص</h3>
+              <button
+                onClick={handleShowDebugPanel}
+                className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center hover:bg-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* أزرار التحكم */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={handleCheckSystemStatus}
+                className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                فحص النظام
+              </button>
+
+              <button
+                onClick={handleRefreshLogs}
+                className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                تحديث السجلات
+              </button>
+
+              <button
+                onClick={handleExportLogs}
+                className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded text-sm flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                تصدير السجلات
+              </button>
+
+              <button
+                onClick={handleClearLogs}
+                className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm"
+              >
+                مسح السجلات
+              </button>
+            </div>
+
+            {/* حالة النظام */}
+            {systemStatus && (
+              <div className="mb-4">
+                <h4 className="font-semibold mb-2">📊 حالة النظام</h4>
+                <div className="bg-gray-800 p-3 rounded text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>🌐 متصل: {systemStatus.online ? '✅' : '❌'}</div>
+                    <div>🔒 HTTPS: {systemStatus.https ? '✅' : '❌'}</div>
+                    <div>📹 WebRTC: {systemStatus.webrtc ? '✅' : '❌'}</div>
+                    <div>🎥 Jitsi API: {systemStatus.jitsiAPI ? '✅' : '❌'}</div>
+                  </div>
+                  {systemStatus.devices && (
+                    <div className="mt-2">
+                      <div>📷 كاميرات: {systemStatus.devices.video || 0}</div>
+                      <div>🎤 ميكروفونات: {systemStatus.devices.audio || 0}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* السجلات */}
+            <div>
+              <h4 className="font-semibold mb-2">📝 السجلات ({debugLogs.length})</h4>
+              <div className="bg-gray-800 p-3 rounded text-xs max-h-60 overflow-y-auto">
+                {debugLogs.length === 0 ? (
+                  <div className="text-gray-400">لا توجد سجلات</div>
+                ) : (
+                  debugLogs.slice(-20).map((log, index) => (
+                    <div key={index} className={`mb-1 ${
+                      log.level === 'ERROR' ? 'text-red-400' :
+                      log.level === 'WARN' ? 'text-yellow-400' :
+                      log.level === 'INFO' ? 'text-blue-400' :
+                      'text-green-400'
+                    }`}>
+                      <span className="text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      <span className="ml-2">[{log.level}]</span>
+                      <span className="ml-2">{log.message}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

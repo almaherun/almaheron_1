@@ -165,14 +165,24 @@ export class CallNotificationManager {
 
   // إرسال طلب مكالمة
   async sendCallRequest(
-    toUserId: string, 
-    toUserName: string, 
+    toUserId: string,
+    toUserName: string,
     callType: 'video' | 'audio' = 'video',
     subject?: string
   ): Promise<string> {
+    console.log('📞 CallNotificationManager: بدء إرسال طلب مكالمة', {
+      fromUserId: this.userId,
+      fromUserName: this.userName,
+      toUserId,
+      toUserName,
+      callType,
+      subject
+    });
+
     try {
       const roomName = `call_${this.userId}_${toUserId}_${Date.now()}`;
-      
+      console.log('🏠 CallNotificationManager: تم إنشاء اسم الغرفة', { roomName });
+
       const callRequest: Omit<CallRequest, 'id'> = {
         fromUserId: this.userId,
         fromUserName: this.userName,
@@ -186,12 +196,25 @@ export class CallNotificationManager {
         updatedAt: serverTimestamp() as Timestamp,
       };
 
+      console.log('📝 CallNotificationManager: بيانات طلب المكالمة', callRequest);
+
       const docRef = await addDoc(collection(db, 'call_requests'), callRequest);
-      console.log('📤 تم إرسال طلب المكالمة:', docRef.id);
-      
+      console.log('✅ CallNotificationManager: تم إرسال طلب المكالمة بنجاح', {
+        requestId: docRef.id,
+        roomName,
+        timestamp: new Date().toISOString()
+      });
+
       return docRef.id;
-    } catch (error) {
-      console.error('❌ خطأ في إرسال طلب المكالمة:', error);
+    } catch (error: any) {
+      console.error('❌ CallNotificationManager: خطأ في إرسال طلب المكالمة', {
+        error: error.message,
+        code: error.code,
+        stack: error.stack,
+        toUserId,
+        fromUserId: this.userId,
+        timestamp: new Date().toISOString()
+      });
       throw error;
     }
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { JitsiManager } from '@/lib/jitsi-manager';
+import { JitsiManager, JitsiDebugUtils } from '@/lib/jitsi-manager';
 
 interface UseJitsiCallProps {
   displayName: string;
@@ -97,10 +97,17 @@ export function useJitsiCall({ displayName, autoConnect = false }: UseJitsiCallP
     };
   }, [displayName]);
 
-  // بدء مكالمة جديدة
+  // بدء مكالمة جديدة مع تسجيل مفصل
   const startCall = useCallback(async (roomName: string) => {
+    console.log('🚀 useJitsiCall: بدء مكالمة جديدة', { roomName });
+
     if (!jitsiManagerRef.current || !containerRef.current) {
-      setError('مدير المكالمة غير متاح');
+      const errorMsg = 'مدير المكالمة غير متاح';
+      console.error('❌ useJitsiCall:', errorMsg, {
+        hasManager: !!jitsiManagerRef.current,
+        hasContainer: !!containerRef.current
+      });
+      setError(errorMsg);
       return false;
     }
 
@@ -109,11 +116,13 @@ export function useJitsiCall({ displayName, autoConnect = false }: UseJitsiCallP
       setError(null);
       setCurrentRoomName(roomName);
 
+      console.log('📞 useJitsiCall: إنشاء المكالمة...');
       await jitsiManagerRef.current.createCall(roomName, containerRef.current);
+      console.log('✅ useJitsiCall: تم إنشاء المكالمة بنجاح');
       return true;
 
     } catch (error: any) {
-      console.error('❌ Failed to start call:', error);
+      console.error('❌ useJitsiCall: فشل في بدء المكالمة:', error);
       setError(error.message || 'فشل في بدء المكالمة');
       setIsConnecting(false);
       return false;
