@@ -2,40 +2,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Helper functions للتحقق من الصلاحيات
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    
+
     function isAdmin() {
       return isAuthenticated() && getUserData().type == 'admin';
     }
-    
+
     function isTeacher() {
       return isAuthenticated() && getUserData().type == 'teacher';
     }
-    
+
     function isStudent() {
       return isAuthenticated() && getUserData().type == 'student';
     }
-    
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
+
     function isValidUserType(type) {
       return type in ['admin', 'teacher', 'student'];
     }
-    
+
     function isValidEmail(email) {
       return email.matches('.*@.*\\..*');
     }
-    
+
     // قواعد مجموعة المستخدمين - مبسطة لحل مشكلة التحميل
     match /users/{userId} {
       // السماح بالقراءة لجميع المستخدمين المصادقين (مؤقتاً)
@@ -187,30 +187,52 @@ service cloud.firestore {
       allow read, write, create, update, delete: if isAuthenticated();
     }
 
-    // قواعد طلبات المكالمات الجديدة (Jitsi Meet)
+    // قواعد طلبات المكالمات الجديدة - نظام المكالمات المجاني 100% (Jitsi Meet)
     match /call_requests/{requestId} {
-      // القراءة: المرسل أو المستقبل
-      allow read: if isAuthenticated()
-        && (resource.data.fromUserId == request.auth.uid
-            || resource.data.toUserId == request.auth.uid);
+      // القراءة: المرسل أو المستقبل أو الأدمن
+      allow read: if isAuthenticated() &&
+                 (isOwner(resource.data.fromUserId) ||
+                  isOwner(resource.data.toUserId) ||
+                  isAdmin());
 
-      // الإنشاء: المستخدمين المصادقين
-      allow create: if isAuthenticated()
-        && resource.data.fromUserId == request.auth.uid
-        && resource.data.createdAt == request.time
-        && resource.data.status == 'pending';
+      // إنشاء: أي مستخدم مسجل يمكنه إنشاء طلب مكالمة
+      allow create: if isAuthenticated() &&
+                   request.auth.uid == resource.data.fromUserId &&
+                   resource.data.keys().hasAll(['fromUserId', 'toUserId', 'status', 'createdAt']) &&
+                   resource.data.status in ['pending', 'calling'] &&
+                   resource.data.fromUserId != resource.data.toUserId;
 
-      // التحديث: المرسل أو المستقبل (لتحديث الحالة)
-      allow update: if isAuthenticated()
-        && (resource.data.fromUserId == request.auth.uid
-            || resource.data.toUserId == request.auth.uid)
-        && request.resource.data.updatedAt == request.time;
+      // تحديث: المرسل أو المستقبل يمكنهما تحديث الحالة
+      allow update: if isAuthenticated() &&
+                   (isOwner(resource.data.fromUserId) ||
+                    isOwner(resource.data.toUserId)) &&
+                   resource.data.status in ['pending', 'calling', 'accepted', 'rejected', 'ended', 'missed'] &&
+                   request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'endedAt', 'acceptedAt']);
 
-      // الحذف: المرسل أو المستقبل أو الأدمن
-      allow delete: if isAdmin()
-        || (isAuthenticated() &&
-            (resource.data.fromUserId == request.auth.uid
-             || resource.data.toUserId == request.auth.uid));
+      // حذف: المرسل أو الأدمن فقط
+      allow delete: if isAuthenticated() &&
+                   (isOwner(resource.data.fromUserId) || isAdmin());
+    }
+
+    // قواعد جلسات المكالمات - لحفظ معلومات الجلسة
+    match /call_sessions/{sessionId} {
+      // قراءة: المشاركين في المكالمة أو الأدمن
+      allow read: if isAuthenticated() &&
+                 (request.auth.uid in resource.data.participants || isAdmin());
+
+      // إنشاء: أي مستخدم مسجل يمكنه إنشاء جلسة
+      allow create: if isAuthenticated() &&
+                   request.auth.uid in resource.data.participants &&
+                   resource.data.keys().hasAll(['participants', 'roomName', 'createdAt', 'status']);
+
+      // تحديث: المشاركين في المكالمة
+      allow update: if isAuthenticated() &&
+                   request.auth.uid in resource.data.participants &&
+                   request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'endedAt']);
+
+      // حذف: المشاركين أو الأدمن
+      allow delete: if isAuthenticated() &&
+                   (request.auth.uid in resource.data.participants || isAdmin());
     }
     
     // منع الوصول لأي مجموعات أخرى
