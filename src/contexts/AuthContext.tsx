@@ -26,12 +26,26 @@ interface UserData {
   hourlyRate?: number;
 }
 
+interface SignUpData {
+  email: string;
+  password: string;
+  displayName: string;
+  phoneNumber?: string;
+  gender?: string;
+  userType?: string;
+  avatar?: File | null;
+}
+
 interface AuthContextType {
   user: User | null;
   userData: UserData | null;
   userProfile: UserData | null;
   loading: boolean;
   refreshUserProfile: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (data: SignUpData) => Promise<void>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -40,6 +54,10 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   loading: true,
   refreshUserProfile: async () => {},
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
+  resetPassword: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -144,13 +162,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // دالة تسجيل الدخول
+  const signIn = async (email: string, password: string) => {
+    const { signInWithEmailAndPassword } = await import('firebase/auth');
+    const { auth } = await import('@/lib/firebase');
+
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  // دالة إنشاء حساب جديد
+  const signUp = async (data: SignUpData) => {
+    const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+    const { auth, db, storage } = await import('@/lib/firebase');
+    const { doc, setDoc } = await import('firebase/firestore');
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+
+    // إنشاء الحساب
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const user = userCredential.user;
+
+    let avatarUrl = '';
+
+    // رفع الصورة الشخصية إن وجدت
+    if (data.avatar) {
+      const avatarRef = ref(storage, `avatars/${user.uid}`);
+      await uploadBytes(avatarRef, data.avatar);
+      avatarUrl = await getDownloadURL(avatarRef);
+    }
+
+    // تحديث ملف المستخدم
+    await updateProfile(user, {
+      displayName: data.displayName,
+      photoURL: avatarUrl
+    });
+
+    // حفظ البيانات الإضافية في Firestore
+    const userDocRef = doc(db, 'users', user.uid);
+    await setDoc(userDocRef, {
+      uid: user.uid,
+      name: data.displayName,
+      email: data.email,
+      type: data.userType || 'student',
+      avatarUrl,
+      phone: data.phoneNumber,
+      gender: data.gender,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+  };
+
+  // دالة تسجيل الخروج
+  const signOut = async () => {
+    const { signOut: firebaseSignOut } = await import('firebase/auth');
+    const { auth } = await import('@/lib/firebase');
+
+    await firebaseSignOut(auth);
+  };
+
+  // دالة إعادة تعيين كلمة المرور
+  const resetPassword = async (email: string) => {
+    const { sendPasswordResetEmail } = await import('firebase/auth');
+    const { auth } = await import('@/lib/firebase');
+
+    await sendPasswordResetEmail(auth, email);
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      userData, 
-      userProfile: userData, 
-      loading, 
-      refreshUserProfile 
+    <AuthContext.Provider value={{
+      user,
+      userData,
+      userProfile: userData,
+      loading,
+      refreshUserProfile,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword
     }}>
       {children}
     </AuthContext.Provider>
